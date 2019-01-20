@@ -227,7 +227,7 @@
         verbose = typeof verbose == 'function' ? verbose : function() {};
         verbose("Defines: "+JSON.stringify(defines));
 
-        var match, match2, include, p, stack = [];
+        var isIncluded, match, match2, include, p, stack = [];
         while ((match = Preprocessor.EXPR.exec(this.source)) !== null) {
             verbose(match[2]+" @ "+match.index+"-"+Preprocessor.EXPR.lastIndex);
             var indent = match[1];
@@ -297,6 +297,7 @@
                 case 'ifdef':
                 case 'ifndef':
                 case 'if':
+                    isIncluded = false;
                     Preprocessor.IF.lastIndex = match.index;
                     if ((match2 = Preprocessor.IF.exec(this.source)) === null) {
                         throw(new Error("Illegal #"+match[2]+": "+this.source.substring(match.index, match.index+this.errorSourceAhead)+"..."));
@@ -310,6 +311,7 @@
                         include = Preprocessor.evaluate(defines, this.defines, match2[2]);
                     }
                     verbose("  value: "+include);
+                    isIncluded = isIncluded || include;
                     stack.push(p={
                         "include": include,
                         "index": match.index,
@@ -357,15 +359,16 @@
                     verbose("  continue at "+Preprocessor.EXPR.lastIndex);
                     if (match2[1] == "else" || match2[1] == "elif") {
                         if (match2[1] == 'else') {
-                            include = !before["include"];
+                            include = !isIncluded;
                         } else {
                             include = Preprocessor.evaluate(defines, this.defines, match2[2]);
                         }
                         stack.push(p={
-                            "include": !before["include"],
+                            "include": include,
                             "index": Preprocessor.EXPR.lastIndex,
                             "lastIndex": Preprocessor.EXPR.lastIndex
                         });
+                        isIncluded = isIncluded || include;
                         verbose("  push: "+JSON.stringify(p));
                     }
                     break;
